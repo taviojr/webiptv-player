@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste HLS - Diagnóstico de Streaming</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .video-container {
+            background: #000;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        video {
+            width: 100%;
+            max-width: 800px;
+            height: 450px;
+            background: #000;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .controls input, .controls button {
+            margin: 5px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #333;
+            color: #fff;
+        }
+        .controls input {
+            width: 500px;
+        }
+        .logs {
+            background: #222;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        .warning { color: #ffd43b; }
+        .info { color: #74c0fc; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+        .stat-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #74c0fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Teste HLS - Diagnóstico de Streaming</h1>
+        
+        <div class="video-container">
+            <video id="video" controls muted></video>
+        </div>
+        
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="URL do stream HLS (ex: /live/jose.otavio/Fametro%402025/2168415.m3u8)" 
+                   value="/live/jose.otavio/Fametro%402025/2168415.m3u8">
+            <button onclick="loadStream()">🎬 Carregar Stream</button>
+            <button onclick="clearLogs()">🧹 Limpar Logs</button>
+            <button onclick="testConnectivity()">🔗 Testar Conectividade</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-title">Status do Player</div>
+                <div id="playerStatus">Aguardando...</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Qualidades Disponíveis</div>
+                <div id="qualities">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Buffer Status</div>
+                <div id="bufferStatus">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Erros HLS</div>
+                <div id="hlsErrors">0</div>
+            </div>
+        </div>
+        
+        <div class="logs" id="logs"></div>
+    </div>
+
+    <script>
+        let hls = null;
+        let errorCount = 0;
+        const video = document.getElementById('video');
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function updateStatus(status) {
+            document.getElementById('playerStatus').textContent = status;
+        }
+        
+        function updateQualities(levels) {
+            const qualitiesEl = document.getElementById('qualities');
+            if (levels && levels.length > 0) {
+                qualitiesEl.textContent = levels.map(l => `${l.height}p`).join(', ');
+            } else {
+                qualitiesEl.textContent = 'Nenhuma';
+            }
+        }
+        
+        function updateBuffer() {
+            if (video.buffered.length > 0) {
+                const buffered = video.buffered.end(video.buffered.length - 1);
+                const current = video.currentTime;
+                const ahead = buffered - current;
+                document.getElementById('bufferStatus').textContent = `${ahead.toFixed(1)}s à frente`;
+            }
+        }
+        
+        function updateErrors() {
+            document.getElementById('hlsErrors').textContent = errorCount;
+        }
+        
+        function loadStream() {
+            const url = document.getElementById('urlInput').value;
+            if (!url) {
+                log('❌ URL não fornecida', 'error');
+                return;
+            }
+            
+            log(`🎬 Iniciando carregamento: ${url}`, 'info');
+            updateStatus('Carregando...');
+            
+            // Limpar player anterior
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    debug: true,
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    backBufferLength: 90
+                });
+                
+                // Event listeners
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    log('📺 Player HLS anexado ao vídeo', 'success');
+                    updateStatus('Player anexado');
+                });
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    log(`✅ Manifest carregado com ${data.levels.length} qualidades`, 'success');
+                    updateStatus('Manifest carregado');
+                    updateQualities(data.levels);
+                    
+                    video.play().then(() => {
+                        log('▶️ Reprodução iniciada', 'success');
+                        updateStatus('Reproduzindo');
+                    }).catch(e => {
+                        log(`❌ Erro ao iniciar reprodução: ${e.message}`, 'error');
+                        updateStatus('Erro na reprodução');
+                    });
+                });
+                
+                hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                    log(`📋 Level carregado: ${data.details.fragments.length} fragmentos`, 'info');
+                });
+                
+                hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                    log(`📦 Fragmento carregado: ${data.frag.url}`, 'info');
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    errorCount++;
+                    updateErrors();
+                    
+                    const errorMsg = `❌ HLS Error: ${data.type} - ${data.details}`;
+                    log(errorMsg, 'error');
+                    
+                    if (data.error) {
+                        log(`   Detalhes: ${data.error.message}`, 'error');
+                    }
+                    
+                    if (data.url) {
+                        log(`   URL: ${data.url}`, 'error');
+                    }
+                    
+                    if (data.fatal) {
+                        updateStatus('Erro fatal');
+                        log('💥 Erro fatal detectado', 'error');
+                        
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                log('🔄 Tentando recuperar erro de rede...', 'warning');
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                log('🔄 Tentando recuperar erro de mídia...', 'warning');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                log('💥 Erro irrecuperável, destruindo player', 'error');
+                                hls.destroy();
+                                updateStatus('Player destruído');
+                                break;
+                        }
+                    }
+                });
+                
+                hls.attachMedia(video);
+                hls.loadSource(url);
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                log('🍎 Usando player nativo (Safari)', 'info');
+                video.src = url;
+                updateStatus('Player nativo');
+            } else {
+                log('❌ HLS não suportado neste navegador', 'error');
+                updateStatus('HLS não suportado');
+            }
+        }
+        
+        function clearLogs() {
+            logs.innerHTML = '';
+            errorCount = 0;
+            updateErrors();
+            log('🧹 Logs limpos', 'info');
+        }
+        
+        async function testConnectivity() {
+            log('🔗 Testando conectividade...', 'info');
+            
+            try {
+                const response = await fetch('/player_api.php?username=jose.otavio&password=Fametro%402025&action=get_live_categories');
+                if (response.ok) {
+                    log('✅ API funcionando corretamente', 'success');
+                } else {
+                    log(`❌ API retornou erro: ${response.status}`, 'error');
+                }
+            } catch (e) {
+                log(`❌ Erro na API: ${e.message}`, 'error');
+            }
+            
+            try {
+                const testUrl = '/live/jose.otavio/Fametro%402025/2168415.m3u8';
+                const response = await fetch(testUrl);
+                if (response.ok) {
+                    const content = await response.text();
+                    if (content.startsWith('#EXTM3U')) {
+                        log('✅ Arquivo M3U8 válido', 'success');
+                    } else {
+                        log('⚠️ Arquivo M3U8 pode estar corrompido', 'warning');
+                        log(`Conteúdo: ${content.substring(0, 100)}...`, 'warning');
+                    }
+                } else {
+                    log(`❌ Erro ao acessar M3U8: ${response.status}`, 'error');
+                }
+            } catch (e) {
+                log(`❌ Erro ao testar M3U8: ${e.message}`, 'error');
+            }
+        }
+        
+        // Update buffer status periodically
+        setInterval(updateBuffer, 1000);
+        
+        // Initial log
+        log('🚀 Página de teste HLS carregada', 'success');
+        log('💡 Digite uma URL de stream e clique em "Carregar Stream"', 'info');
+    </script>
+</body>
+</html>

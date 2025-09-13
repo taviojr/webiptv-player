@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AMZPLAY Web</title>
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▶</span>
+      <strong>AMZPLAY</strong> <em>Web</em>
+    </div>
+    <div class="actions">
+      <button id="btnSettings" class="ghost">Configurações</button>
+      <button id="btnLogout" class="danger">Sair</button>
+    </div>
+  </header>
+
+  <main id="app" class="app hidden" aria-hidden="true">
+    <section class="left">
+      <div class="panel">
+        <h3>Categorias</h3>
+        <div class="tabs">
+          <button data-tab="live" class="tab active">Ao vivo</button>
+          <button data-tab="vod" class="tab">Filmes</button>
+          <button data-tab="series" class="tab">Séries</button>
+        </div>
+        <div class="search">
+          <input id="searchCat" type="search" placeholder="Buscar categoria..." />
+        </div>
+        <ul id="categoryList" class="list"></ul>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="player-card">
+        <video id="player" playsinline controls></video>
+        <div class="player-meta">
+          <div>
+            <h4 id="nowTitle">Selecione um canal/filme/série</h4>
+            <div id="nowSub" class="muted"></div>
+          </div>
+          <div class="player-actions">
+            <a id="openInPlayer" href="#" target="_blank" rel="noopener" class="ghost">Abrir direto</a>
+            <button id="copyURL" class="ghost">Copiar URL</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <input id="searchItem" class="grow" type="search" placeholder="Buscar canais / títulos..." />
+          <select id="sortItem">
+            <option value="name">A–Z</option>
+            <option value="id">ID</option>
+          </select>
+        </div>
+        <ul id="itemList" class="cards"></ul>
+      </div>
+
+      <div id="seriesEpisodes" class="panel hidden">
+        <h3>Episódios</h3>
+        <ul id="episodeList" class="list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <div id="login" class="overlay">
+    <form id="loginForm" class="card" role="dialog" aria-modal="true">
+      <h2>Conectar ao servidor Xtream</h2>
+      <label>URL do portal</label>
+      <input id="portal" type="url" placeholder="http://host:port" value="http://novoshow.xyz:80" required />
+      <div class="row">
+        <div class="col">
+          <label>Usuário</label>
+          <input id="username" autocomplete="username" required />
+        </div>
+        <div class="col">
+          <label>Senha</label>
+          <input id="password" type="password" autocomplete="current-password" required />
+        </div>
+      </div>
+      <button class="primary" type="submit">Entrar</button>
+      <p class="muted small">Os dados ficam salvos somente no seu navegador (localStorage).</p>
+      <details class="muted small">
+        <summary>Notas</summary>
+        <ul>
+          <li>Versão com <code>_redirects</code> (sem Functions). Se o site estiver em HTTPS, as chamadas passam pelo seu domínio.</li>
+          <li><strong>Debug:</strong> Abra o Console do navegador (F12) para ver logs detalhados do player.</li>
+          <li><strong>Problemas de reprodução:</strong> Ative "Log detalhado" nas Configurações para mais informações.</li>
+          <li><strong>CORS:</strong> Se streams não funcionarem, desative "Usar proxy" nas Configurações.</li>
+        </ul>
+      </details>
+    </form>
+  </div>
+
+  <dialog id="settings">
+    <form method="dialog">
+      <h3>Configurações</h3>
+      <label><input type="checkbox" id="prefLogRaw" /> Log detalhado no console</label>
+      <label><input type="checkbox" id="prefUseProxy" checked /> Usar proxy por _redirects</label>
+      <menu>
+        <button value="cancel">Fechar</button>
+        <button id="btnClear" class="danger" value="default">Limpar cache</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="./assets/app.js"></script>
+</body>
+</html>

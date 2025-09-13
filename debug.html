@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - XTREAM Player</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { background: #2a2a2a; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        .button:hover { background: #0056b3; }
+        .button.danger { background: #dc3545; }
+        .button.danger:hover { background: #c82333; }
+        .button.success { background: #28a745; }
+        .button.success:hover { background: #218838; }
+        .info { background: #17a2b8; color: white; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #dc3545; color: white; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #28a745; color: white; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        pre { background: #333; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+        .log { height: 300px; overflow-y: auto; background: #000; color: #0f0; padding: 10px; font-family: monospace; border-radius: 4px; }
+        input, select { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #555; background: #333; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug - XTREAM Player</h1>
+        
+        <div class="section">
+            <h2>📊 Estado Atual</h2>
+            <button class="button" onclick="checkState()">Verificar Estado</button>
+            <button class="button danger" onclick="clearStorage()">Limpar LocalStorage</button>
+            <button class="button success" onclick="goToApp()">Ir para App</button>
+            <div id="stateInfo"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔐 Teste de Login</h2>
+            <input type="text" id="testPortal" placeholder="Portal URL" value="http://novoshow.xyz:80">
+            <input type="text" id="testUser" placeholder="Usuário" value="jose.otavio">
+            <input type="password" id="testPass" placeholder="Senha" value="Fametro@2025">
+            <button class="button" onclick="testLogin()">Testar Login</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Teste de Categorias</h2>
+            <select id="tabSelect">
+                <option value="live">Live TV</option>
+                <option value="vod">VOD</option>
+                <option value="series">Séries</option>
+            </select>
+            <button class="button" onclick="testCategories()">Testar Categorias</button>
+            <div id="categoriesResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Teste de Conectividade</h2>
+            <button class="button" onclick="testConnectivity()">Testar Servidor</button>
+            <button class="button" onclick="testProxy()">Testar Proxy</button>
+            <div id="connectivityResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>📝 Console Log</h2>
+            <button class="button" onclick="clearLog()">Limpar Log</button>
+            <div id="consoleLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const KEY = 'amz_xtream_v2_1';
+        let logDiv = document.getElementById('consoleLog');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            console.log(logEntry);
+            
+            const div = document.createElement('div');
+            div.textContent = logEntry;
+            div.style.color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc';
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function checkState() {
+            try {
+                const stored = localStorage.getItem(KEY);
+                const state = stored ? JSON.parse(stored) : null;
+                
+                const info = document.getElementById('stateInfo');
+                if (state) {
+                    info.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Credenciais Encontradas</h3>
+                            <pre>${JSON.stringify(state, null, 2)}</pre>
+                        </div>
+                    `;
+                    log('Estado carregado com sucesso', 'success');
+                } else {
+                    info.innerHTML = '<div class="info">ℹ️ Nenhuma credencial salva</div>';
+                    log('Nenhuma credencial encontrada', 'info');
+                }
+            } catch (e) {
+                document.getElementById('stateInfo').innerHTML = `<div class="error">❌ Erro: ${e.message}</div>`;
+                log(`Erro ao verificar estado: ${e.message}`, 'error');
+            }
+        }
+
+        function clearStorage() {
+            localStorage.removeItem(KEY);
+            document.getElementById('stateInfo').innerHTML = '<div class="success">✅ LocalStorage limpo</div>';
+            log('LocalStorage limpo', 'success');
+        }
+
+        function goToApp() {
+            window.location.href = '/';
+        }
+
+        async function testLogin() {
+            const portal = document.getElementById('testPortal').value;
+            const username = document.getElementById('testUser').value;
+            const password = document.getElementById('testPass').value;
+            
+            if (!portal || !username || !password) {
+                document.getElementById('loginResult').innerHTML = '<div class="error">❌ Preencha todos os campos</div>';
+                return;
+            }
+
+            try {
+                log('Testando login...', 'info');
+                const url = `/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_categories`;
+                
+                const response = await fetch(url);
+                log(`Resposta recebida: ${response.status}`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('Login bem-sucedido', 'success');
+                
+                document.getElementById('loginResult').innerHTML = `
+                    <div class="success">
+                        <h3>✅ Login Bem-sucedido</h3>
+                        <p>Categorias encontradas: ${Array.isArray(data) ? data.length : 'N/A'}</p>
+                        <pre>${JSON.stringify(data.slice(0, 3), null, 2)}</pre>
+                    </div>
+                `;
+            } catch (e) {
+                log(`Erro no login: ${e.message}`, 'error');
+                document.getElementById('loginResult').innerHTML = `<div class="error">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        async function testCategories() {
+            const tab = document.getElementById('tabSelect').value;
+            
+            try {
+                const stored = localStorage.getItem(KEY);
+                if (!stored) {
+                    throw new Error('Nenhuma credencial salva. Faça login primeiro.');
+                }
+                
+                const state = JSON.parse(stored);
+                log(`Testando categorias para: ${tab}`, 'info');
+                
+                const action = tab === 'live' ? 'get_live_categories' : 
+                              tab === 'vod' ? 'get_vod_categories' : 'get_series_categories';
+                              
+                const url = `/player_api.php?username=${encodeURIComponent(state.username)}&password=${encodeURIComponent(state.password)}&action=${action}`;
+                
+                const response = await fetch(url);
+                log(`Resposta recebida: ${response.status}`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`Categorias carregadas: ${Array.isArray(data) ? data.length : 'N/A'}`, 'success');
+                
+                document.getElementById('categoriesResult').innerHTML = `
+                    <div class="success">
+                        <h3>✅ Categorias Carregadas</h3>
+                        <p>Total: ${Array.isArray(data) ? data.length : 'N/A'}</p>
+                        <pre>${JSON.stringify(data.slice(0, 5), null, 2)}</pre>
+                    </div>
+                `;
+            } catch (e) {
+                log(`Erro ao carregar categorias: ${e.message}`, 'error');
+                document.getElementById('categoriesResult').innerHTML = `<div class="error">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        async function testConnectivity() {
+            try {
+                log('Testando conectividade com o servidor...', 'info');
+                const response = await fetch('/');
+                log(`Servidor local: ${response.status}`, 'success');
+                
+                document.getElementById('connectivityResult').innerHTML = `
+                    <div class="success">✅ Servidor local funcionando (${response.status})</div>
+                `;
+            } catch (e) {
+                log(`Erro de conectividade: ${e.message}`, 'error');
+                document.getElementById('connectivityResult').innerHTML = `<div class="error">❌ Erro: ${e.message}</div>`;
+            }
+        }
+
+        async function testProxy() {
+            try {
+                log('Testando proxy...', 'info');
+                const response = await fetch('/player_api.php?action=get_live_categories&username=test&password=test');
+                log(`Proxy: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const result = response.ok ? 'success' : 'error';
+                const className = response.ok ? 'success' : 'error';
+                
+                document.getElementById('connectivityResult').innerHTML = `
+                    <div class="${className}">Proxy: ${response.status} ${response.statusText}</div>
+                `;
+            } catch (e) {
+                log(`Erro no proxy: ${e.message}`, 'error');
+                document.getElementById('connectivityResult').innerHTML = `<div class="error">❌ Erro no proxy: ${e.message}</div>`;
+            }
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        // Inicialização
+        log('Debug page carregada', 'success');
+        checkState();
+    </script>
+</body>
+</html>

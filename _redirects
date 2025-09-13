@@ -1,0 +1,14 @@
+# API endpoints
+/player_api.php http://novoshow.xyz:80/player_api.php 200
+
+# Stream endpoints with CORS headers
+/live/*   http://novoshow.xyz:80/live:splat 200!
+/movie/*  http://novoshow.xyz:80/movie:splat 200!
+/series/* http://novoshow.xyz:80/series:splat 200!
+
+# HLS fragments
+/hls/* http://novoshow.xyz:80/hls:splat 200!
+
+# Fallback for any other stream formats
+/get.php* http://novoshow.xyz:80/get.php:splat 200!
+/streaming/* http://novoshow.xyz:80/streaming/:splat 200!

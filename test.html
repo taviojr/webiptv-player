@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Simples</title>
+    <style>
+        body { background: #333; color: white; font-family: Arial; padding: 20px; }
+        .test { background: #555; padding: 20px; border-radius: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Teste do Servidor</h1>
+    <div class="test">
+        <h2>Status do Servidor</h2>
+        <p>Se você está vendo esta página, o servidor está funcionando!</p>
+    </div>
+    
+    <div class="test">
+        <h2>Teste JavaScript</h2>
+        <button onclick="testJS()">Clique para testar JS</button>
+        <p id="jsResult"></p>
+    </div>
+    
+    <div class="test">
+        <h2>Teste HLS.js</h2>
+        <button onclick="testHLS()">Testar HLS.js</button>
+        <p id="hlsResult"></p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script>
+        function testJS() {
+            document.getElementById('jsResult').innerHTML = '✅ JavaScript funcionando!';
+        }
+        
+        function testHLS() {
+            const result = document.getElementById('hlsResult');
+            if (window.Hls) {
+                result.innerHTML = '✅ HLS.js carregado com sucesso! Versão: ' + Hls.version;
+            } else {
+                result.innerHTML = '❌ HLS.js não foi carregado';
+            }
+        }
+        
+        // Auto-teste ao carregar
+        window.onload = function() {
+            console.log('Página de teste carregada');
+            testJS();
+            testHLS();
+        }
+    </script>
+</body>
+</html>
